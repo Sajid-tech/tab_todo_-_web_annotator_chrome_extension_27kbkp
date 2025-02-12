@@ -46,12 +46,56 @@ loadTodosAndUpdateTitle();
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.message === 'updateTodos') {
     loadTodosAndUpdateTitle();
-  } else if (request.message === 'scrollToText') {
-    scrollToText(request.text, request.id);
-  } else if (request.message === 'highlightText') {
-    highlightText(request.text, request.id);
+  } else if (request.message === 'goToAnnotation') {
+    scrollToAnnotation(request.annotationId);
   }
 });
+
+// Function to scroll to annotation by ID
+function scrollToAnnotation(annotationId) {
+  const element = document.querySelector(`[data-annotation-id="${annotationId}"]`);
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    element.style.outline = '2px solid red'; // Temporary highlight to show user
+    setTimeout(() => element.style.outline = '', 2000);
+  } else {
+    console.error('Annotation not found:', annotationId);
+  }
+}
+
+// Add click event to show comment
+document.addEventListener('click', function (e) {
+  if (e.target.classList.contains('comment-text')) {
+    const comment = e.target.getAttribute('title');
+    showCommentPopup(e.pageX, e.pageY, comment);
+  }
+});
+
+// Function to show comment popup
+function showCommentPopup(x, y, comment) {
+  let popup = document.getElementById('comment-popup');
+  if (!popup) {
+    popup = document.createElement('div');
+    popup.id = 'comment-popup';
+    popup.style.position = 'absolute';
+    popup.style.backgroundColor = '#fff';
+    popup.style.border = '1px solid #ccc';
+    popup.style.padding = '5px';
+    popup.style.zIndex = '1000';
+    popup.style.maxWidth = '200px';
+    popup.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+    document.body.appendChild(popup);
+  }
+
+  popup.textContent = comment;
+  popup.style.left = `${x}px`;
+  popup.style.top = `${y}px`;
+  popup.style.display = 'block';
+
+  setTimeout(() => {
+    popup.style.display = 'none';
+  }, 3000);
+}
 
 // Annotation Feature
 let annotationToolbar = null;
@@ -273,85 +317,3 @@ function getXPathForElement(element) {
             ix++;
     }
 }
-
-// Function to highlight text
-function highlightText(text, id, comment) {
-  const markId = 'selection-' + id;
-  const regex = new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-  const treeWalker = document.createTreeWalker(
-    document.body,
-    NodeFilter.SHOW_TEXT,
-    null,
-    false
-  );
-
-  let node;
-  while ((node = treeWalker.nextNode())) {
-    if (regex.test(node.nodeValue)) {
-      const newNodeValue = node.nodeValue.replace(
-        regex,
-        (match) => {
-          if (comment) {
-            return `<mark id="${markId}" class="highlighted-text comment-text" title="${comment}">${match}</mark>`;
-          } else {
-            return `<mark id="${markId}" class="highlighted-text">${match}</mark>`;
-          }
-        }
-      );
-
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = newNodeValue;
-
-      while (tempDiv.firstChild) {
-        node.parentNode.insertBefore(tempDiv.firstChild, node);
-      }
-      node.parentNode.removeChild(node);
-    }
-  }
-}
-
-// Function to scroll to text
-function scrollToText(text, id) {
-  const markId = 'selection-' + id;
-  const element = document.getElementById(markId);
-  if (element) {
-    element.scrollIntoView({
-      behavior: 'smooth',
-      block: 'center',
-      inline: 'nearest'
-    });
-  }
-}
-
-// Function to re-apply annotations when the page loads
-function reapplyAnnotations() {
-    chrome.storage.sync.get(['annotations'], (result) => {
-        const annotations = result.annotations || {};
-        const url = window.location.href;
-        const domainAnnotations = annotations[url] || [];
-
-        domainAnnotations.forEach(annotation => {
-            try {
-                // Get the element by XPath
-                const element = document.evaluate(annotation.position.xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-
-                if (element) {
-                    // Create a range
-                    const range = document.createRange();
-                    range.setStart(element, annotation.position.startOffset);
-                    range.setEnd(element, annotation.position.endOffset);
-
-                    // Apply the highlight
-                    applyHighlight(range, annotation.id, annotation.highlightColor);
-                } else {
-                    console.warn('Element not found for XPath:', annotation.position.xpath);
-                }
-            } catch (e) {
-                console.error('Error reapplying annotation:', annotation, e);
-            }
-        });
-    });
-}
-
-// Re-apply annotations when the page loads
-window.addEventListener('load', reapplyAnnotations);

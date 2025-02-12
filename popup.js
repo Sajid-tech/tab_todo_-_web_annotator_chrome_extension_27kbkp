@@ -77,13 +77,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const navigateButton = document.createElement('button');
         navigateButton.textContent = 'Go to';
         navigateButton.addEventListener('click', () => {
-          // Send message to content script to scroll to the text
           chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (tabs && tabs.length > 0) {
               chrome.tabs.sendMessage(tabs[0].id, {
-                message: 'scrollToText',
-                text: selection.text,
-                id: selection.id
+                message: 'goToAnnotation',
+                annotationId: selection.id
               });
             } else {
               console.error('No active tabs found.');

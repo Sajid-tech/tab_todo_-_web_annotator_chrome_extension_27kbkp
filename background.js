@@ -50,7 +50,38 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         console.log('Selection saved:', newSelection);
 
         // Execute script to highlight the text
-        executeScriptInTab(tab.id, highlightText, [selectedText, id, null]);
+        executeScriptInTab(tab.id, (text, id) => {
+          // Function to highlight text
+          function highlightText(text, id) {
+            const markId = 'selection-' + id;
+            const regex = new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+            const treeWalker = document.createTreeWalker(
+              document.body,
+              NodeFilter.SHOW_TEXT,
+              null,
+              false
+            );
+
+            let node;
+            while ((node = treeWalker.nextNode())) {
+              if (regex.test(node.nodeValue)) {
+                const newNodeValue = node.nodeValue.replace(
+                  regex,
+                  (match) => `<mark id="${markId}" class="highlighted-text" data-annotation-id="${id}">${match}</mark>`
+                );
+
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = newNodeValue;
+
+                while (tempDiv.firstChild) {
+                  node.parentNode.insertBefore(tempDiv.firstChild, node);
+                }
+                node.parentNode.removeChild(node);
+              }
+            }
+          }
+          highlightText(text, id);
+        }, [selectedText, id]);
       });
     });
   } else if (info.menuItemId === 'addComment') {
@@ -59,65 +90,74 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     const id = Date.now().toString();
 
     // Prompt for comment
-    const comment = prompt("Enter your comment:");
-    if (comment !== null) {
-      // Save the selected text, URL, and comment to storage
-      chrome.storage.sync.get(['savedSelections'], (result) => {
-        const savedSelections = result.savedSelections || [];
-        const newSelection = {
-          id: id,
-          text: selectedText,
-          url: url,
-          comment: comment
-        };
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      function: () => {
+        return prompt("Enter your comment:");
+      }
+    }, (result) => {
+      const comment = result && result[0] && result[0].result;
 
-        savedSelections.push(newSelection);
-        chrome.storage.sync.set({ savedSelections: savedSelections }, () => {
-          console.log('Selection saved with comment:', newSelection);
+      if (comment !== null && comment !== undefined) {
+        // Save the selected text, URL, and comment to storage
+        chrome.storage.sync.get(['savedSelections'], (result) => {
+          const savedSelections = result.savedSelections || [];
+          const newSelection = {
+            id: id,
+            text: selectedText,
+            url: url,
+            comment: comment
+          };
 
-          // Execute script to highlight the text with comment
-          executeScriptInTab(tab.id, highlightText, [selectedText, id, comment]);
+          savedSelections.push(newSelection);
+          chrome.storage.sync.set({ savedSelections: savedSelections }, () => {
+            console.log('Selection saved with comment:', newSelection);
+
+            // Execute script to highlight the text with comment
+            executeScriptInTab(tab.id, (text, id, comment) => {
+              // Function to highlight text
+              function highlightText(text, id, comment) {
+                const markId = 'selection-' + id;
+                const regex = new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+                const treeWalker = document.createTreeWalker(
+                  document.body,
+                  NodeFilter.SHOW_TEXT,
+                  null,
+                  false
+                );
+
+                let node;
+                while ((node = treeWalker.nextNode())) {
+                  if (regex.test(node.nodeValue)) {
+                    const newNodeValue = node.nodeValue.replace(
+                      regex,
+                      (match) => {
+                        if (comment) {
+                          return `<mark id="${markId}" class="highlighted-text comment-text" title="${comment}" data-annotation-id="${id}">${match}</mark>`;
+                        } else {
+                          return `<mark id="${markId}" class="highlighted-text" data-annotation-id="${id}">${match}</mark>`;
+                        }
+                      }
+                    );
+
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = newNodeValue;
+
+                    while (tempDiv.firstChild) {
+                      node.parentNode.insertBefore(tempDiv.firstChild, node);
+                    }
+                    node.parentNode.removeChild(node);
+                  }
+                }
+              }
+              highlightText(text, id, comment);
+            }, [selectedText, id, comment]);
+          });
         });
-      });
-    }
+      }
+    });
   }
 });
-
-// Highlight Text Function
-function highlightText(text, id, comment) {
-  const markId = 'selection-' + id;
-  const regex = new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-  const treeWalker = document.createTreeWalker(
-    document.body,
-    NodeFilter.SHOW_TEXT,
-    null,
-    false
-  );
-
-  let node;
-  while ((node = treeWalker.nextNode())) {
-    if (regex.test(node.nodeValue)) {
-      const newNodeValue = node.nodeValue.replace(
-        regex,
-        (match) => {
-          if (comment) {
-            return `<mark id="${markId}" class="highlighted-text comment-text" title="${comment}">${match}</mark>`;
-          } else {
-            return `<mark id="${markId}" class="highlighted-text">${match}</mark>`;
-          }
-        }
-      );
-
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = newNodeValue;
-
-      while (tempDiv.firstChild) {
-        node.parentNode.insertBefore(tempDiv.firstChild, node);
-      }
-      node.parentNode.removeChild(node);
-    }
-  }
-}
 
 // Listen for tab updates
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {

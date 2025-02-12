@@ -1,0 +1,76 @@
+/* styles.css */
+body {
+  font-family: Arial, sans-serif;
+  padding: 10px;
+}
+
+#todo-list {
+  margin-bottom: 10px;
+}
+
+#new-todo {
+  width: 100%;
+  padding: 5px;
+  margin-bottom: 5px;
+}
+
+.web-annotator-highlight {
+  background-color: yellow; /* Default highlight color */
+}
+
+#annotation-toolbar {
+    position: absolute;
+    display: none;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    padding: 5px;
+    z-index: 1000;
+}
+
+#annotation-toolbar button {
+    margin: 0 5px;
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    cursor: pointer;
+}
+
+#comment-input {
+    position: absolute;
+    display: none;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    padding: 5px;
+    z-index: 1001;
+}
+
+#comment-input textarea {
+    width: 200px;
+    height: 100px;
+    margin-bottom: 5px;
+}
+
+#comment-input button {
+    margin: 0 5px;
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    cursor: pointer;
+}
+
+#saved-selections {
+  margin-top: 20px;
+}
+
+#saved-selections div {
+  margin-bottom: 5px;
+}
+
+.highlighted-text {
+  background-color: yellow;
+}
+
+.comment-text {
+  background-color: lightgreen;
+  cursor: pointer;
+}

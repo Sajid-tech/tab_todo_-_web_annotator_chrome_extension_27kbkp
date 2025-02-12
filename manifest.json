@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Tab Todo & Web Annotator",
+  "version": "1.0",
+  "permissions": [
+    "storage",
+    "tabs",
+    "activeTab",
+    "scripting",
+    "contextMenus"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_end"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "web_accessible_resources": [{
+    "resources": ["annotationToolbar.html", "commentInput.html"],
+    "matches": ["<all_urls>"]
+  }]
+}
